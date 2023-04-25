@@ -4,6 +4,14 @@
   const express = require('express')
   const app = express()
   const port = 3000
+  const busboy = require('busboy');
+
+///////////////////////////////////////////////////////////////////
+//Middleware
+
+///////////////////////////////////////////////////////////////////
+
+
 
 //////////////////////Route Public Html//////////////////////////
   app.use(express.static('public'))
@@ -121,8 +129,26 @@
       res.status(400).json({ error: 'Le nom du dossier contient des caractères non-alphanumériques' });
     }
   });
-  //////////////////////////////////////////////////////////////
+  ///////////////////////////////UPLOAD/////////////////////////
 
 
-
+  app.put('/api/drive', function(req, res) {
+    let busboyInstance = new busboy({ headers: req.headers });
+  
+    busboyInstance.on('file', function(fieldname, file, filename, encoding, mimetype) {
+      let filepath = dir + '/' + filename;
+  
+      file.on('end', function() {
+        res.status(200).json({ message: 'Le fichier a été créé avec succès' });
+      });
+  
+      file.pipe(fs.createWriteStream(filepath));
+    });
+  
+    busboyInstance.on('finish', function() {
+      res.status(400).json({ error: 'Aucun fichier n\'a été envoyé' });
+    });
+  
+    req.pipe(busboyInstance);
+  });
   //////////////////////////////////////////////////////////////
