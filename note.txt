@@ -1,0 +1,17 @@
+Retourne une liste contenant les dossiers et fichiers à la racine du “drive”
+REQUEST GET /api/drive
+-> HTTP 200
+-> Content-Type:
+application/json
+
+[
+    {
+        name: “Personnel”,
+        isFolder: true
+    }, 
+    {
+    name: “avis imposition”,
+    size: 1337,
+    isFolder: false
+    }
+]
