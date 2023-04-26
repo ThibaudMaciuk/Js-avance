@@ -5,7 +5,7 @@
   const app = express()
   const port = 3000
   const bb = require('express-busboy');
-const { exit } = require('process');
+  const { exit } = require('process');
   	bb.extend(app, {
     		upload: true,
 	});
@@ -17,7 +17,11 @@ const { exit } = require('process');
   })
   ///////////////////////////////////////////////////////////////
 
-
+  function checkFileName(fileName) {
+    var regex = /^[a-zA-Z0-9]+$/;
+    var fileWithoutExtension = fileName.split('.')[0];
+    return regex.test(fileWithoutExtension);
+  }
 
   //////////////////////Route Api GET DIRECTORY//////////////////////////
   function listerRepertoireSync(repertoire) {
@@ -95,45 +99,48 @@ const { exit } = require('process');
   //////////////////////Route Api DELETE//////////////////////////
   app.delete('/api/drive/:name', function(req, res) {
     let name = req.params.name;
-    if (name.match(/^[a-z0-9]+$/i)) {
+    if (checkFileName(name)) {
       let path = dir + '/' + name;
       if (fs.existsSync(path)) {
-        fs.rmdirSync(path);
-        res.status(200).json({ message: 'Le dossier a été supprimé avec succès' });
+        if (fs.statSync(path).isDirectory()) {
+          fs.rmdirSync(path, { recursive: true });
+        } else {
+          fs.unlinkSync(path);
+        }
+        res.status(200).json({ message: 'Le fichier/dossier a été supprimé avec succès' });
       } else {
-        res.status(404).json({ error: 'Le dossier demandé n\'existe pas' });
+        res.status(404).json({ error: 'Le fichier/dossier demandé n\'existe pas' });
       }
     } else {
-      res.status(400).json({ error: 'Le nom du dossier contient des caractères non-alphanumériques' });
+      res.status(400).json({ error: 'Le nom du fichier/dossier contient des caractères non-alphanumériques' });
     }
   });
-
-
+  
 
   app.delete('/api/drive/:folder/:name', function(req, res) {
     let folder = req.params.folder;
     let name = req.params.name;
-    if (name.match(/^[a-z0-9]+$/i)) {
-      let path = dir + '/' + folder + '/' + name;
-      if (fs.existsSync(path)) {
+    let path = dir + '/' + folder + '/' + name;
+    if (fs.existsSync(path) && checkFileName(name)) {
+      if (fs.statSync(path).isDirectory()) {
+        // Supprimer le dossier
         fs.rmSync(path, { recursive: true });
         res.status(200).json({ message: 'Le dossier a été supprimé avec succès' });
       } else {
-        res.status(404).json({ error: 'Le dossier demandé n\'existe pas' });
+        // Supprimer le fichier
+        fs.unlinkSync(path);
+        res.status(200).json({ message: 'Le fichier a été supprimé avec succès' });
       }
     } else {
-      res.status(400).json({ error: 'Le nom du dossier contient des caractères non-alphanumériques' });
+      res.status(404).json({ error: 'Le fichier/dossier demandé n\'existe pas' });
     }
   });
+  
   ///////////////////////////////UPLOAD/////////////////////////
-  function checkFileName(fileName) {
-    var regex = /^[a-zA-Z0-9]+$/;
-    var fileWithoutExtension = fileName.split('.')[0];
-    return regex.test(fileWithoutExtension);
-  }
 
 
-	app.put('/api/drive', function(req, res) {
+
+/*	app.put('/api/drive', function(req, res) {
   	let filename = req.files.file.filename;
     let filename_temp = req.files.file.file;
   	
@@ -152,5 +159,29 @@ const { exit } = require('process');
     		res.status(400).json({ error: 'Le nom du fichier doit être alphanumérique' });
   	}
 	});
-  
+	*/
+
+app.put('/api/drive/:folder?', function(req, res) {
+  let filename = req.files.file.filename;
+  let filename_temp = req.files.file.file;
+
+  let folder = req.params.folder || '';
+
+  if (filename && checkFileName(filename)) {
+    let filepath = dir + '/' + folder + '/' + filename_temp;
+    if (!fs.existsSync(filepath)) {
+      fs.copyFile(filename_temp, dir + '/' + folder + '/' + filename, () => {
+        console.log('Le fichier a été copié avec succès');
+      });
+      res.status(200).json({ message: 'Le fichier a été créé avec succès' });
+    } else {
+      res.status(409).json({ error: 'Le fichier existe déjà' });
+    }
+  } else {
+    res.status(400).json({ error: 'Le nom du fichier doit être alphanumérique' });
+  }
+});
+
+
+
   //////////////////////////////////////////////////////////////
