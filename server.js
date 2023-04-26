@@ -4,16 +4,12 @@
   const express = require('express')
   const app = express()
   const port = 3000
-  const busboy = require('busboy');
-
-///////////////////////////////////////////////////////////////////
-//Middleware
-
-///////////////////////////////////////////////////////////////////
-
-
-
-//////////////////////Route Public Html//////////////////////////
+  const bb = require('express-busboy');
+const { exit } = require('process');
+  	bb.extend(app, {
+    		upload: true,
+	});
+  ////////////////////Route Public Html//////////////////////////
   app.use(express.static('public'))
   
   app.listen(port, () => {
@@ -130,25 +126,30 @@
     }
   });
   ///////////////////////////////UPLOAD/////////////////////////
+  function checkFileName(fileName) {
+    var regex = /^[a-zA-Z0-9]+$/;
+    var fileWithoutExtension = fileName.split('.')[0];
+    return regex.test(fileWithoutExtension);
+  }
 
 
-  app.put('/api/drive', function(req, res) {
-    let busboyInstance = new busboy({ headers: req.headers });
-  
-    busboyInstance.on('file', function(fieldname, file, filename, encoding, mimetype) {
-      let filepath = dir + '/' + filename;
-  
-      file.on('end', function() {
-        res.status(200).json({ message: 'Le fichier a été créé avec succès' });
-      });
-  
-      file.pipe(fs.createWriteStream(filepath));
-    });
-  
-    busboyInstance.on('finish', function() {
-      res.status(400).json({ error: 'Aucun fichier n\'a été envoyé' });
-    });
-  
-    req.pipe(busboyInstance);
-  });
+	app.put('/api/drive', function(req, res) {
+  	let filename = req.files.file.filename;
+    let filename_temp = req.files.file.file;
+  	
+    console.log(req);
+  	if (filename && checkFileName(filename)) {
+    		let filepath = dir + '/' + filename_temp;
+    		if (!fs.existsSync(filepath)) {
+          fs.copyFile(filename_temp, dir + '/' + filename, () => {
+            console.log('Le fichier a été copié avec succès');
+          });          
+      			res.status(200).json({ message: 'Le fichier a été créé avec succès' });
+    		} else {
+      			res.status(409).json({ error: 'Le fichier existe déjà' });
+    		}
+  	} else {
+    		res.status(400).json({ error: 'Le nom du fichier doit être alphanumérique' });
+  	}
+	});
   //////////////////////////////////////////////////////////////
